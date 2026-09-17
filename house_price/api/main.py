@@ -1,4 +1,5 @@
 from pathlib import Path
+import sys
 import joblib
 import pandas as pd
 import numpy as np
@@ -7,28 +8,16 @@ from torch import nn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from common.cnn_models import build_cnn
 
 ROOT = Path(__file__).resolve().parents[1]
 PREPROCESSOR = joblib.load(ROOT / "model/preprocessor.joblib")
 
 
-class FiveLayerDNN(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.network = nn.Sequential(
-            nn.Linear(220, 128), nn.BatchNorm1d(128), nn.ReLU(), nn.Dropout(.3),
-            nn.Linear(128, 64), nn.BatchNorm1d(64), nn.ReLU(), nn.Dropout(.3),
-            nn.Linear(64, 32), nn.BatchNorm1d(32), nn.ReLU(), nn.Dropout(.3),
-            nn.Linear(32, 16), nn.BatchNorm1d(16), nn.ReLU(), nn.Dropout(.3),
-            nn.Linear(16, 1),
-        )
-
-    def forward(self, values):
-        return self.network(values)
-
-
-MODEL = FiveLayerDNN()
-MODEL.load_state_dict(torch.load(ROOT / "model/model_5l.pt", map_location="cpu")["state_dict"])
+CHECKPOINT = torch.load(ROOT / "model/model_5l.pt", map_location="cpu")
+MODEL = build_cnn(CHECKPOINT["input_length"], CHECKPOINT["output_dim"], CHECKPOINT["architecture"], CHECKPOINT["task"])
+MODEL.load_state_dict(CHECKPOINT["state_dict"])
 MODEL.eval()
 app = FastAPI(title="Vietnam Housing Price API")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])

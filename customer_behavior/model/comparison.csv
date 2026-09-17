@@ -1,5 +1,5 @@
-model,accuracy,precision,recall,f1,roc_auc
-Random Forest,0.55,0.6049,0.55,0.4807,0.8936
-Extra Trees,0.64,0.6697,0.64,0.6149,0.9057
-Gradient Proxy,0.4467,0.6057,0.4467,0.3435,0.8054
-5-Layer DNN,0.7567,0.758,0.7567,0.7545,0.9311
+model,accuracy,precision,recall,f1,roc_auc,backend
+Random Forest,0.55,0.6049,0.55,0.4807,0.8936,
+Extra Trees,0.64,0.6697,0.64,0.6149,0.9057,
+Gradient Proxy,0.4467,0.6057,0.4467,0.3435,0.8054,
+5-Layer CNN,0.3467,0.1949,0.3467,0.2321,0.6343,PyTorch

@@ -11,29 +11,17 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 import torch
 from torch import nn
+import sys
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT.parent))
+from common.cnn_models import build_cnn
 DATA = ROOT / "data/vietnam_housing_dataset.csv"
 MODEL = ROOT / "model"
 MODEL.mkdir(exist_ok=True)
 NUMERIC = ["Area", "Frontage", "Access Road", "Floors", "Bedrooms", "Bathrooms"]
 CATEGORICAL = ["District", "House direction", "Balcony direction", "Legal status", "Furniture state"]
 FEATURES = NUMERIC + CATEGORICAL
-
-
-class FiveLayerDNN(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.network = nn.Sequential(
-            nn.Linear(220, 128), nn.BatchNorm1d(128), nn.ReLU(), nn.Dropout(.3),
-            nn.Linear(128, 64), nn.BatchNorm1d(64), nn.ReLU(), nn.Dropout(.3),
-            nn.Linear(64, 32), nn.BatchNorm1d(32), nn.ReLU(), nn.Dropout(.3),
-            nn.Linear(32, 16), nn.BatchNorm1d(16), nn.ReLU(), nn.Dropout(.3),
-            nn.Linear(16, 1),
-        )
-
-    def forward(self, values):
-        return self.network(values)
 
 
 def fixed_features(values, width=220):
@@ -77,13 +65,13 @@ def main():
         report.append({"model": name, **regression_metrics(y_test, baseline.predict(x_test_encoded))})
 
     torch.manual_seed(42)
-    model = FiveLayerDNN()
+    model = build_cnn(220, 1, "5-layer", "regression")
     optimizer = torch.optim.Adam(model.parameters(), lr=.001)
     loss_fn = nn.MSELoss()
     train_x = torch.tensor(x_train_encoded, dtype=torch.float32)
     train_y = torch.tensor(y_train.to_numpy(), dtype=torch.float32).reshape(-1, 1)
     model.train()
-    for _ in range(200):
+    for _ in range(60):
         optimizer.zero_grad()
         loss = loss_fn(model(train_x), train_y)
         loss.backward()
@@ -91,10 +79,24 @@ def main():
     model.eval()
     with torch.no_grad():
         dl_predictions = model(torch.tensor(x_test_encoded, dtype=torch.float32)).numpy().ravel()
-    report.append({"model": "5-Layer DNN", **regression_metrics(y_test, dl_predictions)})
+    report.append({"model": "5-Layer CNN", "backend": "PyTorch", **regression_metrics(y_test, dl_predictions)})
+    model_3 = build_cnn(220, 1, "3-layer", "regression")
+    optimizer = torch.optim.Adam(model_3.parameters(), lr=.001)
+    model_3.train()
+    for _ in range(60):
+        optimizer.zero_grad()
+        loss = loss_fn(model_3(train_x), train_y)
+        loss.backward()
+        optimizer.step()
+    model_3.eval()
+    with torch.no_grad():
+        predictions_3 = model_3(torch.tensor(x_test_encoded, dtype=torch.float32)).numpy().ravel()
+    report.append({"model": "3-Layer CNN", "backend": "PyTorch", **regression_metrics(y_test, predictions_3)})
 
     joblib.dump(prep, MODEL / "preprocessor.joblib")
-    torch.save({"state_dict": model.state_dict(), "input_dim": 220, "architecture": [220, 128, 64, 32, 16, 1]}, MODEL / "model_5l.pt")
+    torch.save({"state_dict": model.state_dict(), "input_length": 220, "output_dim": 1, "architecture": "5-layer", "task": "regression"}, MODEL / "model_5l.pt")
+    torch.save({"state_dict": model_3.state_dict(), "input_length": 220, "output_dim": 1, "architecture": "3-layer", "task": "regression"}, MODEL / "model_3l.pt")
+    joblib.dump({"preprocessor": prep, "input_length": 220, "task": "regression", "architectures": ["3-layer", "5-layer"]}, MODEL / "cnn_pipeline.joblib")
     pd.DataFrame(report).round(4).to_csv(MODEL / "comparison.csv", index=False)
     print(pd.DataFrame(report).round(3).to_string(index=False))
 

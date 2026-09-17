@@ -13,7 +13,7 @@ python -m uvicorn api.main:app --reload --port 8002
 API: `POST http://localhost:8002/predict/house-price`  
 Swagger: `http://localhost:8002/docs`
 
-Notebook `notebook/train.py` so sánh Random Forest, Extra Trees, Gradient Boosting và DNN 5 tầng `220 -> 128 -> 64 -> 32 -> 16 -> 1` với BatchNorm, ReLU, Dropout 0.3 và MSE. Kết quả lưu tại `model/comparison.csv`; trọng số DL tại `model/model_5l.pt`, preprocessor chỉ fit trên train tại `model/preprocessor.joblib`.
+Notebook `notebook/train.py` so sánh Random Forest, Extra Trees, Gradient Boosting và CNN 5 lớp với MSE. Kết quả lưu tại `model/comparison.csv`; pipeline tại `model/cnn_pipeline.joblib`, trọng số tại `model/model_5l.pt`, preprocessor chỉ fit trên train tại `model/preprocessor.joblib`. Các metric gồm MAE, MSE, RMSE và R2.
 
 ## Chạy mobile
 

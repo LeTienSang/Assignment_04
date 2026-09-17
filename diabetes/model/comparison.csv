@@ -1,5 +1,6 @@
-model,accuracy,precision,recall,f1,roc_auc
-Logistic Regression,0.7013,0.5833,0.5185,0.549,0.808
-Random Forest,0.7208,0.6122,0.5556,0.5825,0.8113
-Gradient Boosting,0.7532,0.6667,0.5926,0.6275,0.8307
-5-Layer DNN,0.7532,0.625,0.7407,0.678,0.8163
+model,backend,accuracy,precision,recall,f1,roc_auc
+Logistic Regression,sklearn,0.7013,0.5833,0.5185,0.549,0.808
+Random Forest,sklearn,0.7208,0.6122,0.5556,0.5825,0.8113
+Gradient Boosting,sklearn,0.7532,0.6667,0.5926,0.6275,0.8307
+3-layer CNN,PyTorch,0.3506,0.3506,1.0,0.5192,0.558
+5-layer CNN,PyTorch,0.6494,0.0,0.0,0.0,0.6793

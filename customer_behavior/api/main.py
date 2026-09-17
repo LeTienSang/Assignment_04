@@ -1,4 +1,5 @@
 from pathlib import Path
+import sys
 import hashlib
 
 import joblib
@@ -9,6 +10,8 @@ from torch import nn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from common.cnn_models import build_cnn
 
 ROOT = Path(__file__).resolve().parents[1]
 MODEL_DIR = ROOT / "model"
@@ -17,23 +20,9 @@ FEATURES = ["views", "cart_additions", "total_spent", "days_since_last_active"]
 preprocessor = joblib.load(MODEL_DIR / "preprocessor.joblib")
 
 
-class FiveLayerDNN(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.network = nn.Sequential(
-            nn.Linear(106, 256), nn.BatchNorm1d(256), nn.ReLU(), nn.Dropout(.3),
-            nn.Linear(256, 128), nn.BatchNorm1d(128), nn.ReLU(), nn.Dropout(.3),
-            nn.Linear(128, 64), nn.BatchNorm1d(64), nn.ReLU(), nn.Dropout(.3),
-            nn.Linear(64, 32), nn.BatchNorm1d(32), nn.ReLU(), nn.Dropout(.3),
-            nn.Linear(32, 4),
-        )
-
-    def forward(self, values):
-        return self.network(values)
-
-
-model = FiveLayerDNN()
-model.load_state_dict(torch.load(MODEL_DIR / "model_5l.pt", map_location="cpu")["state_dict"])
+checkpoint = torch.load(MODEL_DIR / "model_5l.pt", map_location="cpu")
+model = build_cnn(checkpoint["input_length"], checkpoint["output_dim"], checkpoint["architecture"], checkpoint["task"])
+model.load_state_dict(checkpoint["state_dict"])
 model.eval()
 
 app = FastAPI(title="Customer Behavior API", version="1.0.0")

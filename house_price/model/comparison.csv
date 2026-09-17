@@ -1,5 +1,5 @@
-model,mae,rmse,r2
-Random Forest,1.2284,1.593,0.4796
-Extra Trees,1.2853,1.7052,0.4036
-Gradient Boosting,1.3125,1.6521,0.4402
-5-Layer DNN,3.6663,4.0608,-2.3819
+model,mae,rmse,r2,backend
+Random Forest,1.2284,1.593,0.4796,
+Extra Trees,1.2853,1.7052,0.4036,
+Gradient Boosting,1.3125,1.6521,0.4402,
+5-Layer CNN,1.7918,2.1526,0.0497,PyTorch

@@ -12,7 +12,7 @@ python notebook/train.py
 python -m uvicorn api.main:app --reload --port 8000
 ```
 
-The training command creates `data/ecom_data.csv`, `model/preprocessor.joblib`, `model/model_5l.pt`, and `model/comparison.csv`. The new DNN uses `106 -> 256 -> 128 -> 64 -> 32 -> 4`, combining six scaled tabular features with a deterministic 100-dimensional embedding. The existing response contract remains unchanged.
+The training command creates `data/ecom_data.csv`, `model/cnn_pipeline.joblib`, `model/model_5l.pt`, and `model/comparison.csv`. The CNN uses a six-feature sequence plus a deterministic 100-dimensional embedding and reports accuracy, precision, recall, and F1. The existing response contract remains unchanged.
 
 ## Run the dashboard
 

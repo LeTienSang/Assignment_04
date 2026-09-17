@@ -6,12 +6,15 @@ import numpy as np
 import pandas as pd
 import torch
 from torch import nn
+import sys
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT.parent))
+from common.cnn_models import build_cnn
 DATA_DIR = ROOT / "data"
 MODEL_DIR = ROOT / "model"
 DATA_DIR.mkdir(exist_ok=True)
@@ -19,21 +22,6 @@ MODEL_DIR.mkdir(exist_ok=True)
 
 FEATURES = ["views", "cart_additions", "total_spent", "days_since_last_active"]
 TABULAR_FEATURES = FEATURES + ["spend_per_view", "activity_score"]
-
-
-class FiveLayerDNN(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.network = nn.Sequential(
-            nn.Linear(106, 256), nn.BatchNorm1d(256), nn.ReLU(), nn.Dropout(.3),
-            nn.Linear(256, 128), nn.BatchNorm1d(128), nn.ReLU(), nn.Dropout(.3),
-            nn.Linear(128, 64), nn.BatchNorm1d(64), nn.ReLU(), nn.Dropout(.3),
-            nn.Linear(64, 32), nn.BatchNorm1d(32), nn.ReLU(), nn.Dropout(.3),
-            nn.Linear(32, 4),
-        )
-
-    def forward(self, values):
-        return self.network(values)
 
 
 def make_features(frame, scaler=None, fit=False):
@@ -108,13 +96,13 @@ def main() -> None:
         report.append({"model": name, "accuracy": accuracy_score(y_test, predictions), "precision": precision_score(y_test, predictions, average="weighted", zero_division=0), "recall": recall_score(y_test, predictions, average="weighted", zero_division=0), "f1": f1_score(y_test, predictions, average="weighted", zero_division=0), "roc_auc": roc_auc_score(y_test, probabilities, multi_class="ovr", labels=baseline.classes_)})
 
     torch.manual_seed(42)
-    model = FiveLayerDNN()
+    model = build_cnn(106, 4, "5-layer", "multiclass")
     optimizer = torch.optim.Adam(model.parameters(), lr=.001)
     loss_fn = nn.CrossEntropyLoss()
     train_x = torch.tensor(x_train_features, dtype=torch.float32)
     train_y = torch.tensor(y_train, dtype=torch.long)
     model.train()
-    for _ in range(150):
+    for _ in range(60):
         optimizer.zero_grad()
         loss = loss_fn(model(train_x), train_y)
         loss.backward()
@@ -123,10 +111,25 @@ def main() -> None:
     with torch.no_grad():
         probabilities = torch.softmax(model(torch.tensor(x_test_features, dtype=torch.float32)), dim=1).numpy()
     predictions = probabilities.argmax(axis=1)
-    report.append({"model": "5-Layer DNN", "accuracy": accuracy_score(y_test, predictions), "precision": precision_score(y_test, predictions, average="weighted", zero_division=0), "recall": recall_score(y_test, predictions, average="weighted", zero_division=0), "f1": f1_score(y_test, predictions, average="weighted", zero_division=0), "roc_auc": roc_auc_score(y_test, probabilities, multi_class="ovr")})
+    report.append({"model": "5-Layer CNN", "backend": "PyTorch", "accuracy": accuracy_score(y_test, predictions), "precision": precision_score(y_test, predictions, average="weighted", zero_division=0), "recall": recall_score(y_test, predictions, average="weighted", zero_division=0), "f1": f1_score(y_test, predictions, average="weighted", zero_division=0), "roc_auc": roc_auc_score(y_test, probabilities, multi_class="ovr")})
+    model_3 = build_cnn(106, 4, "3-layer", "multiclass")
+    optimizer = torch.optim.Adam(model_3.parameters(), lr=.001)
+    model_3.train()
+    for _ in range(60):
+        optimizer.zero_grad()
+        loss = loss_fn(model_3(train_x), train_y)
+        loss.backward()
+        optimizer.step()
+    model_3.eval()
+    with torch.no_grad():
+        probabilities_3 = torch.softmax(model_3(torch.tensor(x_test_features, dtype=torch.float32)), dim=1).numpy()
+    predictions_3 = probabilities_3.argmax(axis=1)
+    report.append({"model": "3-Layer CNN", "backend": "PyTorch", "accuracy": accuracy_score(y_test, predictions_3), "precision": precision_score(y_test, predictions_3, average="weighted", zero_division=0), "recall": recall_score(y_test, predictions_3, average="weighted", zero_division=0), "f1": f1_score(y_test, predictions_3, average="weighted", zero_division=0), "roc_auc": roc_auc_score(y_test, probabilities_3, multi_class="ovr")})
 
     joblib.dump(preprocessor, MODEL_DIR / "preprocessor.joblib")
-    torch.save({"state_dict": model.state_dict(), "input_dim": 106, "architecture": [106, 256, 128, 64, 32, 4]}, MODEL_DIR / "model_5l.pt")
+    torch.save({"state_dict": model.state_dict(), "input_length": 106, "output_dim": 4, "architecture": "5-layer", "task": "multiclass"}, MODEL_DIR / "model_5l.pt")
+    torch.save({"state_dict": model_3.state_dict(), "input_length": 106, "output_dim": 4, "architecture": "3-layer", "task": "multiclass"}, MODEL_DIR / "model_3l.pt")
+    joblib.dump({"preprocessor": preprocessor, "input_length": 106, "task": "multiclass", "architectures": ["3-layer", "5-layer"]}, MODEL_DIR / "cnn_pipeline.joblib")
     pd.DataFrame(report).round(4).to_csv(MODEL_DIR / "comparison.csv", index=False)
     print(f"Saved {len(dataset):,} rows to {DATA_DIR / 'ecom_data.csv'}")
     print(pd.DataFrame(report).round(3).to_string(index=False))
